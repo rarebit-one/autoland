@@ -1,0 +1,38 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Unit tests (eligibility rules)
+        run: node --test tests/*.test.mjs
+      - name: Syntax check
+        run: node --check autoland.mjs && node --check lib.mjs
+      # Negative control: a sweeper with no required contexts must refuse, not pass.
+      - name: Empty required-contexts fails the action
+        id: empty
+        continue-on-error: true
+        uses: ./
+        with:
+          required-contexts: ""
+      - name: Assert the negative control failed
+        env:
+          OUTCOME: ${{ steps.empty.outcome }}
+        run: '[[ "$OUTCOME" == failure ]] || { echo "::error::autoland ran with no required contexts"; exit 1; }'
+      # Dry run against this repo: exercises the gh reads end to end, merges nothing.
+      - name: Dry-run sweep of this repo
+        uses: ./
+        with:
+          required-contexts: test
