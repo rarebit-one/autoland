@@ -1,0 +1,48 @@
+name: autoland
+description: Squash-merge labelled PRs once their required checks (and optionally a trusted review verdict) are green. Dry-run unless live.
+author: rarebit-one
+branding:
+  icon: git-merge
+  color: green
+
+inputs:
+  required-contexts:
+    description: "Newline- or comma-separated check/status names that must ALL be green. Required; an empty list fails the run."
+    required: true
+  verdict-workflow:
+    description: "Optional path of a pull_request_target review-verdict workflow (e.g. .github/workflows/review-verdict.yml). When set, its latest run for the PR head must have succeeded."
+    default: ""
+  label:
+    description: The opt-in label a PR must carry.
+    default: auto-land
+  hold-labels:
+    description: Labels that block landing.
+    default: "hold,no-auto-land"
+  live:
+    description: '"true" to merge. Anything else is a dry run that only logs what would land.'
+    default: "false"
+  app-token:
+    description: Release-bot App installation token for the merge (so push-triggered workflows fire).
+    default: ""
+  pat:
+    description: Optional fallback PAT for the merge.
+    default: ""
+  github-token:
+    description: Token for reads, and the last-resort (degraded) merge token.
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: autoland sweep
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        AUTOLAND_REQUIRED_CONTEXTS: ${{ inputs.required-contexts }}
+        AUTOLAND_VERDICT_WORKFLOW: ${{ inputs.verdict-workflow }}
+        AUTOLAND_LABEL: ${{ inputs.label }}
+        AUTOLAND_HOLD_LABELS: ${{ inputs.hold-labels }}
+        AUTOLAND_LIVE: ${{ inputs.live }}
+        AUTOLAND_APP_TOKEN: ${{ inputs.app-token }}
+        AUTOLAND_PAT: ${{ inputs.pat }}
+      run: node "$GITHUB_ACTION_PATH/autoland.mjs"
